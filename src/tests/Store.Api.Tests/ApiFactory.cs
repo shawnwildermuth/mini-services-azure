@@ -116,14 +116,14 @@ public class FakePublisher : IMessagePublisher
 }
 
 /// <summary>Collects every log line the app writes so tests can assert on what was (and wasn't) logged.</summary>
-public sealed class CapturingLoggerProvider : ILoggerProvider
+public class CapturingLoggerProvider : ILoggerProvider
 {
   public ConcurrentQueue<(string Category, LogLevel Level, string Message)> Entries { get; } = new();
 
   public ILogger CreateLogger(string categoryName) => new CapturingLogger(categoryName, Entries);
   public void Dispose() { }
 
-  private sealed class CapturingLogger(string category, ConcurrentQueue<(string, LogLevel, string)> entries) : ILogger
+  private class CapturingLogger(string category, ConcurrentQueue<(string, LogLevel, string)> entries) : ILogger
   {
     public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
     public bool IsEnabled(LogLevel logLevel) => true;

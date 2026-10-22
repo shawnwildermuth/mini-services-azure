@@ -26,7 +26,7 @@ public interface IDeadLetterAdmin
   Task<bool> DiscardAsync(string queue, long sequenceNumber, CancellationToken ct);
 }
 
-public sealed class ServiceBusDeadLetterAdmin(ServiceBusClient client) : IDeadLetterAdmin
+public class ServiceBusDeadLetterAdmin(ServiceBusClient client) : IDeadLetterAdmin
 {
   private static readonly ServiceBusReceiverOptions DeadLetter = new() { SubQueue = SubQueue.DeadLetter };
 
@@ -92,7 +92,7 @@ public sealed class ServiceBusDeadLetterAdmin(ServiceBusClient client) : IDeadLe
   }
 }
 /// <summary>Used when Service Bus isn't configured: reads are empty, actions explain why they can't run.</summary>
-public sealed class NullDeadLetterAdmin : IDeadLetterAdmin
+public class NullDeadLetterAdmin : IDeadLetterAdmin
 {
   public Task<IReadOnlyList<DeadLetteredMessage>> PeekAsync(string queue, int max, CancellationToken ct) =>
     throw new ServiceBusNotConfiguredException();

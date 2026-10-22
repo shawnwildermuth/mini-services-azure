@@ -72,7 +72,7 @@ public static class ApiSecurity
 /// A request the framework itself rejects (malformed JSON, body too large, ...) is the client's mistake: answer with its
 /// 4xx status instead of letting the generic handler report a 500, which would also page whoever watches error rates.
 /// </summary>
-public sealed class ClientErrorExceptionHandler(IProblemDetailsService problemDetails) : IExceptionHandler
+public class ClientErrorExceptionHandler(IProblemDetailsService problemDetails) : IExceptionHandler
 {
   public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
   {

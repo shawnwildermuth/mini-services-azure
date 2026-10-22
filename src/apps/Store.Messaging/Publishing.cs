@@ -9,7 +9,7 @@ public interface IMessagePublisher
   Task PublishAsync(string queue, Guid messageId, string type, string json, CancellationToken ct);
 }
 
-public sealed class ServiceBusPublisher(ServiceBusClient client) : IMessagePublisher, IAsyncDisposable
+public class ServiceBusPublisher(ServiceBusClient client) : IMessagePublisher, IAsyncDisposable
 {
   public async Task PublishAsync(string queue, Guid messageId, string type, string json, CancellationToken ct)
   {

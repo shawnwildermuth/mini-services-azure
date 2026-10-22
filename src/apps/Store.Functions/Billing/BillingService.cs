@@ -43,7 +43,7 @@ public class BillingService(
     return result;
   }
 
-  private sealed record Declined(Order Order, string? Reason);
+  private record Declined(Order Order, string? Reason);
 
   private async Task<(BillingResult, Declined?)> ProcessOnceAsync(OrderPlaced placed, CancellationToken ct)
   {

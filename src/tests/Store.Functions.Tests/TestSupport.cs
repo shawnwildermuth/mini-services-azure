@@ -34,7 +34,7 @@ public class RecordingNotifier : ICustomerNotifier
 }
 
 /// <summary>A fresh in-memory database plus the services under test, wired like production.</summary>
-public sealed class Harness : IDisposable
+public class Harness : IDisposable
 {
   public StoreDbContext Db { get; } = new(
     new DbContextOptionsBuilder<StoreDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);

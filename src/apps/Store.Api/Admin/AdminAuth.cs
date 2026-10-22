@@ -32,7 +32,7 @@ public static class AdminPolicy
 /// Mints admin tokens signed with a key that exists only in this process's memory. It is registered solely in
 /// Development with <c>Admin:DevTokens:Enabled</c>, so the admin site can be run before an Entra tenant exists.
 /// </summary>
-public sealed class DevTokenIssuer
+public class DevTokenIssuer
 {
   public const string Issuer = "partsstore-dev";
   public const string Audience = "partsstore-admin-dev";
