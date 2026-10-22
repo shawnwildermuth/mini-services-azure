@@ -1,0 +1,4 @@
+# Shell scripts, container files and nginx templates must keep LF line endings or they fail inside Linux containers.
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+*.template  text eol=lf

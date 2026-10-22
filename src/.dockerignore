@@ -1,0 +1,19 @@
+# Used by the API image (build context = src). Keep the context small and free of local build output.
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/.vs
+**/*.user
+**/local.settings.json
+**/openapi
+.git
+
+# Not part of the API image
+apps/store-web
+apps/admin-web
+apps/Store.Functions
+tests
+infra
+docs
+docker

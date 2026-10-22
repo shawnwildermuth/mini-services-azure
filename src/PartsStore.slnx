@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/apps/">
+    <Project Path="apps/Store.Api/Store.Api.csproj" />
+    <Project Path="apps/Store.Data/Store.Data.csproj" />
+    <Project Path="apps/Store.Domain/Store.Domain.csproj" />
+    <Project Path="apps/Store.Functions/Store.Functions.csproj" />
+    <Project Path="apps/Store.Messaging/Store.Messaging.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Store.Api.Tests/Store.Api.Tests.csproj" />
+    <Project Path="tests/Store.Functions.Tests/Store.Functions.Tests.csproj" />
+  </Folder>
+</Solution>

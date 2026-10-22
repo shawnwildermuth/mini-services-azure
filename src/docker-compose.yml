@@ -1,0 +1,105 @@
+name: partsstore
+
+services:
+  sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SQL_PASSWORD:-Dev!Passw0rd123}"
+    ports:
+      - "${SQL_PORT:-1433}:1433"
+    volumes:
+      - sql-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q \"SELECT 1\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  # Service Bus emulator needs its own SQL Server backing store.
+  servicebus-sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SQL_PASSWORD:-Dev!Passw0rd123}"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q \"SELECT 1\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  servicebus:
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    depends_on:
+      servicebus-sql:
+        condition: service_healthy
+    environment:
+      ACCEPT_EULA: "Y"
+      SQL_SERVER: servicebus-sql
+      MSSQL_SA_PASSWORD: "${SQL_PASSWORD:-Dev!Passw0rd123}"
+    ports:
+      - "5672:5672"
+    volumes:
+      - ./docker/servicebus-config.json:/ServiceBus_Emulator/ConfigFiles/Config.json:ro
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --skipApiVersionCheck
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
+
+  # ---- the applications themselves, built from their Dockerfiles ----------------------------------
+  # Not started by default. Run everything in containers with:  docker compose --profile apps up -d --build
+  # (the Function App isn't containerised; run it with `func start`). For local use only: the API runs in the
+  # Development environment so it migrates + seeds the database and offers the development admin sign-in.
+  api:
+    profiles: [apps]
+    build:
+      context: .
+      dockerfile: apps/Store.Api/Dockerfile
+    image: partsstore/api:local
+    depends_on:
+      sql: { condition: service_healthy }
+      redis: { condition: service_started }
+      servicebus: { condition: service_started }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__StoreDb: "Server=sql;Database=PartsStore;User Id=sa;Password=${SQL_PASSWORD:-Dev!Passw0rd123};TrustServerCertificate=True"
+      ConnectionStrings__Redis: "redis:6379"
+      ServiceBus__ConnectionString: "Endpoint=sb://servicebus;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
+      # Local only: the end-to-end tests create many customers within a minute, which the per-IP limits (20 sign-ins/min) would refuse.
+      RateLimiting__AuthPerMinute: "100000"
+      RateLimiting__GlobalPerMinute: "1000000"
+    ports:
+      - "5233:8080"
+
+  store-web:
+    profiles: [apps]
+    build:
+      context: apps/store-web
+    image: partsstore/store-web:local
+    environment:
+      API_BASE_URL: "http://localhost:5233"
+    ports:
+      - "5173:8080"
+
+  admin-web:
+    profiles: [apps]
+    build:
+      context: apps/admin-web
+    image: partsstore/admin-web:local
+    environment:
+      API_BASE_URL: "http://localhost:5233"
+      AUTH_MODE: dev # real deployments use msal (see docs/entra-setup.md)
+    ports:
+      - "5174:8080"
+
+volumes:
+  sql-data:

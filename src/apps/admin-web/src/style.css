@@ -1,0 +1,10 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: corporate --default, business --prefersdark;
+}
+
+/* A darker error red so red text and borders meet WCAG AA contrast on the light background. */
+@plugin "daisyui/theme" {
+  name: "corporate";
+  --color-error: oklch(50% 0.21 27);
+}

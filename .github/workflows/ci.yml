@@ -1,0 +1,148 @@
+name: CI
+
+# Runs on every pull request, and is called by deploy.yml before anything is released.
+on:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dotnet:
+    name: .NET build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: src/global.json
+
+      - run: dotnet restore src/PartsStore.slnx
+
+      - name: No known-vulnerable NuGet packages (including transitive)
+        run: |
+          dotnet list src/PartsStore.slnx package --vulnerable --include-transitive 2>&1 | tee vulnerable.txt
+          if grep -q "has the following vulnerable packages" vulnerable.txt; then
+            echo "::error::A NuGet package with a known vulnerability is in use (see the list above)."; exit 1
+          fi
+
+      # A Debug build also regenerates the OpenAPI document the front ends build their typed API clients from.
+      - run: dotnet build src/PartsStore.slnx --no-restore
+
+      - run: dotnet test src/PartsStore.slnx --no-build --logger "trx;LogFileName=results.trx"
+
+      - name: OpenAPI document is committed and up to date
+        run: |
+          git diff --exit-code --ignore-cr-at-eol -- src/apps/Store.Api/openapi \
+            || { echo "::error::The API changed but src/apps/Store.Api/openapi/Store.Api.json was not updated. Build the solution and commit it."; exit 1; }
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dotnet-test-results
+          path: src/tests/**/TestResults/*.trx
+          if-no-files-found: ignore
+
+  web:
+    name: ${{ matrix.app }} (type-check, test, build)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [store-web, admin-web]
+    defaults:
+      run:
+        working-directory: src/apps/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/apps/${{ matrix.app }}/package-lock.json
+
+      - run: npm ci
+
+      - name: No known high/critical vulnerabilities in shipped dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      # Regenerate the typed API client from the committed OpenAPI document; it must match what is committed.
+      - run: npm run api:gen
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+      - name: Generated files are committed and up to date
+        run: |
+          git diff --exit-code --ignore-cr-at-eol -- src/api/schema.d.ts typed-router.d.ts \
+            || { echo "::error::Generated files are out of date. Run 'npm run api:gen' and 'npm run build' in ${{ matrix.app }} and commit the result."; exit 1; }
+
+  infra:
+    name: Bicep and deployment scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: src/global.json
+
+      - name: Compile every Bicep template (includes the linter)
+        run: |
+          set -e
+          for f in src/infra/main.bicep src/infra/modules/*.bicep; do
+            echo "::group::$f"
+            az bicep build --file "$f" --stdout > /dev/null
+            echo "::endgroup::"
+          done
+
+      - name: SQL grant tool generates its script and rejects bad input
+        run: |
+          dotnet run src/infra/scripts/grant-sql-access.cs -- --dry-run --app "id-example-api=11111111-2222-3333-4444-555555555555" > /dev/null
+          if dotnet run src/infra/scripts/grant-sql-access.cs -- --dry-run --app "bad'name=11111111-2222-3333-4444-555555555555"; then
+            echo "::error::the grant tool accepted a hostile app name"; exit 1
+          fi
+
+  images:
+    name: Container image (${{ matrix.image }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { image: store-api,  context: src,                  dockerfile: src/apps/Store.Api/Dockerfile }
+          - { image: store-web,  context: src/apps/store-web,   dockerfile: src/apps/store-web/Dockerfile }
+          - { image: admin-web,  context: src/apps/admin-web,   dockerfile: src/apps/admin-web/Dockerfile }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build (not pushed)
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: false
+          load: true
+          tags: ${{ matrix.image }}:ci
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,scope=${{ matrix.image }},mode=max
+
+      # Fails only on vulnerabilities that already have a fix (the web images upgrade OS packages on every build, so a
+      # failure here means a fix exists that the build could not apply, e.g. a newer base image is needed).
+      - name: Scan the image for known vulnerabilities
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image \
+            --severity HIGH,CRITICAL --ignore-unfixed --scanners vuln --exit-code 1 "${{ matrix.image }}:ci"
+
+      - name: Image runs as a non-root user
+        run: |
+          user=$(docker image inspect "${{ matrix.image }}:ci" --format '{{.Config.User}}')
+          echo "user: '$user'"
+          case "$user" in ""|0|root|root:*|0:*) echo "::error::${{ matrix.image }} would run as root"; exit 1 ;; esac

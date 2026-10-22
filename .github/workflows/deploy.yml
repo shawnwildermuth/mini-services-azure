@@ -1,0 +1,234 @@
+name: Deploy
+
+# Test -> provision (Bicep) -> build images -> migrate the database -> release -> smoke test.
+# One-time setup (Azure identity, repository variables, Entra app) is described in src/docs/deployment.md.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write   # OIDC login to Azure: no stored credentials
+  contents: read
+
+# Never run two releases at once, and never cancel one halfway.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+
+jobs:
+  ci:
+    name: Test
+    uses: ./.github/workflows/ci.yml
+
+  # ------------------------------------------------------------------ infrastructure
+  infra:
+    name: Provision infrastructure
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: production
+    outputs:
+      registry_name: ${{ steps.deploy.outputs.registry_name }}
+      registry_login_server: ${{ steps.deploy.outputs.registry_login_server }}
+      api_app: ${{ steps.deploy.outputs.api_app }}
+      store_app: ${{ steps.deploy.outputs.store_app }}
+      admin_app: ${{ steps.deploy.outputs.admin_app }}
+      function_app: ${{ steps.deploy.outputs.function_app }}
+      sql_server: ${{ steps.deploy.outputs.sql_server }}
+      sql_fqdn: ${{ steps.deploy.outputs.sql_fqdn }}
+      sql_database: ${{ steps.deploy.outputs.sql_database }}
+      sql_identities: ${{ steps.deploy.outputs.sql_identities }}
+      api_url: ${{ steps.deploy.outputs.api_url }}
+      store_url: ${{ steps.deploy.outputs.store_url }}
+      admin_url: ${{ steps.deploy.outputs.admin_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # Idempotent: unchanged resources are left alone. Apps keep running the image tag they already have;
+      # the "release" job below is what moves them to this commit's images.
+      - name: Deploy src/infra/main.bicep
+        id: deploy
+        run: |
+          set -euo pipefail
+          out=$(az deployment group create \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "partsstore-${GITHUB_RUN_NUMBER}" \
+            --template-file src/infra/main.bicep \
+            --parameters \
+              environmentName='${{ vars.ENVIRONMENT_NAME || 'prod' }}' \
+              sqlAdminObjectId='${{ vars.SQL_ADMIN_OBJECT_ID }}' \
+              sqlAdminLogin='${{ vars.SQL_ADMIN_LOGIN }}' \
+              sqlAdminType='${{ vars.SQL_ADMIN_TYPE || 'Application' }}' \
+              adminClientId='${{ vars.ADMIN_CLIENT_ID }}' \
+            --query properties.outputs --output json)
+
+          {
+            echo "registry_name=$(jq -r .registryName.value <<<"$out")"
+            echo "registry_login_server=$(jq -r .registryLoginServer.value <<<"$out")"
+            echo "api_app=$(jq -r .apiAppName.value <<<"$out")"
+            echo "store_app=$(jq -r .storeAppName.value <<<"$out")"
+            echo "admin_app=$(jq -r .adminAppName.value <<<"$out")"
+            echo "function_app=$(jq -r .functionAppName.value <<<"$out")"
+            echo "sql_server=$(jq -r .sqlServerName.value <<<"$out")"
+            echo "sql_fqdn=$(jq -r .sqlServerFqdn.value <<<"$out")"
+            echo "sql_database=$(jq -r .sqlDatabaseName.value <<<"$out")"
+            echo "sql_identities=$(jq -c .sqlIdentities.value <<<"$out")"
+            echo "api_url=$(jq -r .apiUrl.value <<<"$out")"
+            echo "store_url=$(jq -r .storeUrl.value <<<"$out")"
+            echo "admin_url=$(jq -r .adminUrl.value <<<"$out")"
+          } >> "$GITHUB_OUTPUT"
+
+  # ------------------------------------------------------------------ images
+  images:
+    name: Build ${{ matrix.image }}
+    needs: infra
+    runs-on: ubuntu-latest
+    environment: production
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { image: store-api, context: src,                dockerfile: src/apps/Store.Api/Dockerfile }
+          - { image: store-web, context: src/apps/store-web, dockerfile: src/apps/store-web/Dockerfile }
+          - { image: admin-web, context: src/apps/admin-web, dockerfile: src/apps/admin-web/Dockerfile }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # Built inside Azure Container Registry (no Docker daemon or registry password on the runner). The commit SHA is the
+      # real version; "latest" always points at the most recent release and is what infra deployments reference.
+      - name: Build and push
+        run: |
+          az acr build \
+            --registry "${{ needs.infra.outputs.registry_name }}" \
+            --image "${{ matrix.image }}:${GITHUB_SHA}" \
+            --image "${{ matrix.image }}:latest" \
+            --file "${{ matrix.dockerfile }}" \
+            "${{ matrix.context }}"
+
+  # ------------------------------------------------------------------ database
+  database:
+    name: Migrate database
+    needs: infra
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: src/global.json
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Let this runner through the SQL firewall (removed at the end)
+        run: |
+          ip=$(curl -fsS https://api.ipify.org)
+          az sql server firewall-rule create \
+            --resource-group "$RESOURCE_GROUP" --server "${{ needs.infra.outputs.sql_server }}" \
+            --name "gha-${GITHUB_RUN_ID}" --start-ip-address "$ip" --end-ip-address "$ip"
+
+      # Schema first: the new API code only starts after this succeeds. The pipeline's identity is the SQL Entra admin.
+      - name: Apply EF Core migrations
+        working-directory: src
+        run: |
+          dotnet tool restore
+          dotnet ef migrations bundle \
+            --project apps/Store.Data --startup-project apps/Store.Api \
+            --configuration Release --self-contained --runtime linux-x64 \
+            --output "$RUNNER_TEMP/efbundle" --force
+          chmod +x "$RUNNER_TEMP/efbundle"
+          "$RUNNER_TEMP/efbundle" --connection \
+            "Server=tcp:${{ needs.infra.outputs.sql_fqdn }},1433;Database=${{ needs.infra.outputs.sql_database }};Authentication=Active Directory Default;Encrypt=True;Connection Timeout=60"
+
+      # Create/refresh the database users for the API's and the Function App's managed identities.
+      - name: Grant the app identities database access
+        run: |
+          args=$(jq -r '.[] | "--app \(.name)=\(.clientId)"' <<< '${{ needs.infra.outputs.sql_identities }}')
+          dotnet run src/infra/scripts/grant-sql-access.cs -- \
+            --server "${{ needs.infra.outputs.sql_fqdn }}" --database "${{ needs.infra.outputs.sql_database }}" $args
+
+      - name: Remove the temporary firewall rule
+        if: always()
+        run: |
+          az sql server firewall-rule delete \
+            --resource-group "$RESOURCE_GROUP" --server "${{ needs.infra.outputs.sql_server }}" \
+            --name "gha-${GITHUB_RUN_ID}" || true
+
+  # ------------------------------------------------------------------ release
+  release:
+    name: Release
+    needs: [infra, images, database]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: src/global.json
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # Points each app at this commit's image. App Service pulls it, starts the new container, then retires the old one.
+      - name: Roll the web apps to ${{ github.sha }}
+        run: |
+          registry="${{ needs.infra.outputs.registry_login_server }}"
+          release() { # <app> <image>
+            az webapp config set --resource-group "$RESOURCE_GROUP" --name "$1" \
+              --linux-fx-version "DOCKER|${registry}/$2:${GITHUB_SHA}" --output none
+          }
+          release "${{ needs.infra.outputs.api_app }}"   store-api
+          release "${{ needs.infra.outputs.store_app }}" store-web
+          release "${{ needs.infra.outputs.admin_app }}" admin-web
+
+      - name: Publish the Function App
+        run: dotnet publish src/apps/Store.Functions/Store.Functions.csproj --configuration Release --output "$RUNNER_TEMP/functions"
+
+      - name: Deploy the Function App
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ needs.infra.outputs.function_app }}
+          package: ${{ runner.temp }}/functions
+          sku: flexconsumption
+
+      # /health/ready checks the database and the Redis cache through the API's managed identity and Key Vault reference,
+      # so a pass here proves the wiring works, not just that the container started.
+      - name: Smoke test
+        run: |
+          check() { # <name> <url>
+            for attempt in $(seq 1 30); do
+              if curl -fsS --max-time 10 "$2" > /dev/null; then echo "ok: $1 ($2)"; return 0; fi
+              echo "waiting for $1 ($attempt/30)..."; sleep 10
+            done
+            echo "::error::$1 did not become healthy: $2"; return 1
+          }
+          check "API"         "${{ needs.infra.outputs.api_url }}/health/ready"
+          check "storefront"  "${{ needs.infra.outputs.store_url }}/healthz"
+          check "admin site"  "${{ needs.infra.outputs.admin_url }}/healthz"
+
+          # The front ends must be pointed at the API we just deployed.
+          curl -fsS "${{ needs.infra.outputs.store_url }}/env.js" | grep -q "${{ needs.infra.outputs.api_url }}" \
+            || { echo "::error::storefront env.js does not reference the API"; exit 1; }

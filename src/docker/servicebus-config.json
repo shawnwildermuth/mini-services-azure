@@ -1,0 +1,34 @@
+{
+  "UserConfig": {
+    "Namespaces": [
+      {
+        "Name": "sbemulatorns",
+        "Queues": [
+          {
+            "Name": "order-placed",
+            "Properties": {
+              "DeadLetteringOnMessageExpiration": true,
+              "DefaultMessageTimeToLive": "PT1H",
+              "LockDuration": "PT1M",
+              "MaxDeliveryCount": 5,
+              "RequiresDuplicateDetection": true,
+              "DuplicateDetectionHistoryTimeWindow": "PT5M"
+            }
+          },
+          {
+            "Name": "payment-captured",
+            "Properties": {
+              "DeadLetteringOnMessageExpiration": true,
+              "DefaultMessageTimeToLive": "PT1H",
+              "LockDuration": "PT1M",
+              "MaxDeliveryCount": 5,
+              "RequiresDuplicateDetection": true,
+              "DuplicateDetectionHistoryTimeWindow": "PT5M"
+            }
+          }
+        ]
+      }
+    ],
+    "Logging": { "Type": "File" }
+  }
+}
