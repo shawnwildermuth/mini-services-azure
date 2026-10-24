@@ -26,7 +26,7 @@ export default async function globalSetup(_config: FullConfig) {
     throw new Error(
       `The application stack is not running:\n  - ${down.join('\n  - ')}\n\n` +
         'Start it with:  cd src && docker compose --profile apps up -d --build\n' +
-        'and the Function App (needed for orders to be paid and shipped):  cd src/apps/Store.Functions && func start',
+        'or, for the built images as in CI:  cd src && docker compose --profile apps up -d --build  plus  func start in src/apps/Store.Functions',
     )
   }
 

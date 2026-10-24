@@ -9,12 +9,14 @@ WORKDIR /src
 COPY apps/Store.Domain/Store.Domain.csproj    apps/Store.Domain/
 COPY apps/Store.Data/Store.Data.csproj        apps/Store.Data/
 COPY apps/Store.Messaging/Store.Messaging.csproj apps/Store.Messaging/
+COPY apps/Store.ServiceDefaults/Store.ServiceDefaults.csproj apps/Store.ServiceDefaults/
 COPY apps/Store.Api/Store.Api.csproj          apps/Store.Api/
 RUN dotnet restore apps/Store.Api/Store.Api.csproj
 
 COPY apps/Store.Domain/    apps/Store.Domain/
 COPY apps/Store.Data/      apps/Store.Data/
 COPY apps/Store.Messaging/ apps/Store.Messaging/
+COPY apps/Store.ServiceDefaults/ apps/Store.ServiceDefaults/
 COPY apps/Store.Api/       apps/Store.Api/
 RUN dotnet publish apps/Store.Api/Store.Api.csproj -c Release --no-restore -o /app/publish /p:UseAppHost=false
 

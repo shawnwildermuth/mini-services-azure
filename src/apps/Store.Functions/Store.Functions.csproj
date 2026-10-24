@@ -16,6 +16,7 @@
     <ProjectReference Include="..\Store.Data\Store.Data.csproj" />
     <ProjectReference Include="..\Store.Domain\Store.Domain.csproj" />
     <ProjectReference Include="..\Store.Messaging\Store.Messaging.csproj" />
+    <ProjectReference Include="..\Store.ServiceDefaults\Store.ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>

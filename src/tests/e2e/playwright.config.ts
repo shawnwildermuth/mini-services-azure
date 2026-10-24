@@ -2,7 +2,8 @@ import { defineConfig, devices } from '@playwright/test'
 import { urls } from './support/urls'
 
 // The suite drives the real applications; it does not start them. Bring the stack up first (see README.md):
-//   docker compose --profile apps up -d --build      and      func start   (Store.Functions)
+//   dotnet run --project src/apps/Store.AppHost   (Aspire: infrastructure, API, Functions, both sites)
+// or the built images, as CI does (with E2E_IMAGES=1):  docker compose --profile apps up -d --build  and  func start
 //
 // PW_CHANNEL=msedge uses an installed Microsoft Edge (no browser download). Leave it unset to use Playwright's Chromium
 // (`npx playwright install chromium`), as CI does.

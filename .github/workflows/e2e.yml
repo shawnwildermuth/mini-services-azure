@@ -67,6 +67,8 @@ jobs:
 
       - name: Run the tests (desktop and phone)
         working-directory: src/tests/e2e
+        env:
+          E2E_IMAGES: '1' # the sites under test are the built nginx images
         run: npx playwright test
 
       - uses: actions/upload-artifact@v4

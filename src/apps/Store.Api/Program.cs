@@ -18,6 +18,7 @@ using Store.Data;
 using Store.Data.Seeding;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddServiceDefaults(); // OpenTelemetry + service discovery (the Aspire dashboard in local development)
 
 if (!builder.Environment.IsDevelopment())
   builder.Logging.AddJsonConsole();

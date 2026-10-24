@@ -91,6 +91,7 @@ The work followed a nine-step plan, one phase at a time, each verified before mo
 | **6 Administration site** | MSAL sign-in, product/category/stock management (cache invalidated on every write), order cancel and refund, dashboard, failed-message console, admin API with the `Admin` role | API tests; 12-step browser walk-through |
 | **7 Containers, infrastructure, pipeline** | Dockerfiles, Bicep (identity-first, Entra-only SQL, no shared keys), GitHub Actions CI and deploy, SQL access tool for managed identities, Data Protection keys in SQL | Images run in a real browser; all templates compile clean; workflows pass `actionlint` |
 | **8 Quality** | 80 Playwright tests (functional, accessibility, security attacks, phone), load test of the cache, security review with scanners and fixes | See [results](#testing-and-quality-results) |
+| **9 Aspire** | `Store.AppHost` + `Store.ServiceDefaults` replace docker-compose for development: one command starts SQL, Redis, Service Bus emulator, Azurite, API, Functions and both Vite sites with a dashboard; e2e passes against it (image-only header tests are skipped unless `E2E_IMAGES=1`) | 117 .NET tests, 74 e2e passed + 5 image-only skipped |
 
 Requirements decisions made along the way (as agreed in conversation): payments mocked; shipping simulated with UPS for North America
 and DHL for everywhere else; Bicep for infrastructure; one region and one environment; GitHub Actions for CI/CD; Tailwind and daisyUI
@@ -137,26 +138,37 @@ src/
     load/                   k6 load test
   infra/                Bicep (main.bicep + modules/), scripts/grant-sql-access.cs
   docs/                 deployment, Entra setup, performance, security review
-  docker/               local Service Bus emulator config
-  docker-compose.yml    local infrastructure; `--profile apps` also runs the three images
+  docker/               Service Bus emulator config (used by docker-compose.yml)
+  docker-compose.yml    runs the built images together (CI e2e, load test); not for day-to-day development
   PartsStore.slnx
 ```
 
 ## Run it locally
 
-Prerequisites: .NET SDK 10, Node.js 22, Docker. (Azure Functions Core Tools v4 to run the function app.)
+Prerequisites: .NET SDK 10, Node.js 22, Docker (or another container runtime), and [Azure Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) for the function app.
+
+Local development runs on [.NET Aspire](https://learn.microsoft.com/dotnet/aspire/). One command starts everything:
 
 ```powershell
-cd src
-docker compose --profile apps up -d --build        # SQL Server, Redis, Service Bus emulator, Azurite + API (5233), storefront (5173), admin (5174)
-cd apps/Store.Functions
-copy local.settings.example.json local.settings.json   # once
-func start                                               # billing and fulfillment
+cd src/apps/Store.AppHost
+dotnet run            # or: aspire run, or F5 on Store.AppHost in your IDE
 ```
 
-Without the `apps` profile, `docker compose up -d` starts only the infrastructure, so the apps can be run from source:
-`dotnet run --project apps/Store.Api` (migrates and seeds the dev database), and `npm run dev` in `apps/store-web` and
-`apps/admin-web`. If port 1433 is taken, set `SQL_PORT` before `docker compose`.
+The Aspire dashboard (URL and login link are printed on start-up) shows every resource with its logs, traces, metrics and health.
+Aspire starts SQL Server, Redis, the Service Bus emulator and Azurite as containers (SQL data is kept in a volume between runs),
+hands their connection strings to the apps, and runs, in dependency order:
+
+| Resource | URL |
+|---|---|
+| `api` (migrates and seeds the dev database) | http://localhost:5233 |
+| `functions` (billing and fulfillment) | started by Aspire through Core Tools |
+| `store-web` | http://localhost:5173 |
+| `admin-web` | http://localhost:5174 |
+
+The container ports are assigned by Aspire, so nothing collides with a SQL Server you already run on 1433. The AppHost is
+`apps/Store.AppHost`; `apps/Store.ServiceDefaults` adds OpenTelemetry and service discovery to the API and the function app.
+`docker-compose.yml` is no longer the way to develop: it remains only to run the *built images* together (CI's end-to-end job,
+the load test, and [`src/docs/deployment.md`](src/docs/deployment.md)). Production is unchanged: Bicep, the Dockerfiles and the workflows.
 
 Locally the admin site signs in with a development token (only an API in the `Development` environment offers it). To use real
 Microsoft sign-in see [`src/docs/entra-setup.md`](src/docs/entra-setup.md).

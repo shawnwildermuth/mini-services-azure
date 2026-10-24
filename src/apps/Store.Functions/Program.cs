@@ -13,6 +13,7 @@ using Store.Functions.Shipping;
 using Store.Messaging;
 
 var builder = FunctionsApplication.CreateBuilder(args);
+builder.AddServiceDefaults(); // OpenTelemetry + service discovery (the Aspire dashboard in local development)
 
 builder.Services.AddDbContext<StoreDbContext>(options =>
   options.UseSqlServer(

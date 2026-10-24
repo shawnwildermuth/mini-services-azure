@@ -6,13 +6,11 @@ administration workflows, accessibility (WCAG 2.1 A/AA via axe-core), and phone-
 
 ## Run them
 
-The suite does not start anything itself. From `src/`:
+The suite does not start anything itself. Start the stack with Aspire (`dotnet run` in `apps/Store.AppHost`, wait until every
+resource is running in the dashboard), then:
 
 ```powershell
-docker compose --profile apps up -d --build          # SQL, Redis, Service Bus emulator, API, storefront, admin site
-cd apps/Store.Functions; func start                  # separate terminal: billing and fulfillment (needs Core Tools v4)
-
-cd tests/e2e
+cd src/tests/e2e
 npm install
 npx playwright install chromium                      # or use an installed Edge: $env:PW_CHANNEL = "msedge"
 npx playwright test                                  # desktop + phone projects
@@ -21,7 +19,8 @@ npx playwright test -g "declined card" --headed      # one test, watching it
 npx playwright show-report                           # HTML report; traces are kept for failures
 ```
 
-If port 1433 is taken, set `SQL_PORT` for `docker compose` and put the same port in `apps/Store.Functions/local.settings.json`.
+The security header/source-map tests apply to the built nginx images, so they are skipped against Aspire's Vite dev servers;
+set `E2E_IMAGES=1` when running against the images (`docker compose --profile apps up -d --build`, as CI does).
 A start-up check fails fast with instructions if the stack, or the Function App, isn't running.
 
 ## How the tests are written

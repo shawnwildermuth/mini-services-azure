@@ -1,10 +1,12 @@
 <Solution>
   <Folder Name="/apps/">
     <Project Path="apps/Store.Api/Store.Api.csproj" />
+    <Project Path="apps/Store.AppHost/Store.AppHost.csproj" />
     <Project Path="apps/Store.Data/Store.Data.csproj" />
     <Project Path="apps/Store.Domain/Store.Domain.csproj" />
     <Project Path="apps/Store.Functions/Store.Functions.csproj" />
     <Project Path="apps/Store.Messaging/Store.Messaging.csproj" />
+    <Project Path="apps/Store.ServiceDefaults/Store.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Store.Api.Tests/Store.Api.Tests.csproj" />

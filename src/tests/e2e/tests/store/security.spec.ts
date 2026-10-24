@@ -13,6 +13,10 @@ function failOnDialogs(page: Page) {
 const b64url = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url')
 
 test.describe('security: what the browser is told', () => {
+  // These check the nginx images' headers and production bundles. The Aspire stack serves the Vite dev servers, which
+  // have neither; set E2E_IMAGES=1 when the sites under test are the built images (CI, `docker compose`-style runs).
+  test.skip(process.env.E2E_IMAGES !== '1', 'applies to the built images only (set E2E_IMAGES=1)')
+
   for (const [name, url] of [['storefront', urls.store], ['admin site', urls.admin]] as const) {
     test(`the ${name} is served with a strict content security policy and hardening headers`, async ({ request }) => {
       const headers = (await request.get(`${url}/`)).headers()
