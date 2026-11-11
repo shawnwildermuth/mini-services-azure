@@ -87,6 +87,13 @@ declare module 'vue-router/auto-routes' {
       { slug: ParamValue<false> },
       | never
     >,
+    '/credits': RouteRecordInfo<
+      '/credits',
+      '/credits',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/forgot-password': RouteRecordInfo<
       '/forgot-password',
       '/forgot-password',
@@ -205,6 +212,14 @@ declare module 'vue-router/auto-routes' {
         | never
       pathParamNames:
         | 'slug'
+    }
+    'src/pages/credits.vue': {
+      routes:
+        | '/credits'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/forgot-password.vue': {
       routes:

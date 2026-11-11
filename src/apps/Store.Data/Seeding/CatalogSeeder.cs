@@ -6,9 +6,28 @@ namespace Store.Data.Seeding;
 /// <summary>Sample catalog data for development. Does nothing if categories already exist.</summary>
 public static class CatalogSeeder
 {
+  /// <summary>
+  /// Sample product photos served by store-web from <c>public/images/products</c>. Credits live in the
+  /// <c>credits.json</c> next to them. Products without an entry fall back to a category icon in the UI.
+  /// </summary>
+  private static readonly Dictionary<string, string> SampleImages = new()
+  {
+    ["CPU-AMD-9950X"] = "/images/products/cpu-amd-9950x.jpg",
+    ["SSD-CRU-MX500"] = "/images/products/ssd-cru-mx500.jpg",
+    ["HDD-SEA-4T"] = "/images/products/hdd-sea-4t.jpg",
+    ["GPU-NV-5070"] = "/images/products/gpu-nv-5070.jpg",
+    ["GPU-NV-5060"] = "/images/products/gpu-nv-5060.jpg",
+    ["GPU-INT-B580"] = "/images/products/gpu-int-b580.jpg",
+    ["RAM-COR-32-6000"] = "/images/products/ram-cor-32-6000.jpg",
+  };
+
   public static async Task SeedAsync(StoreDbContext db, CancellationToken ct = default)
   {
-    if (await db.Categories.AnyAsync(ct)) return;
+    if (await db.Categories.AnyAsync(ct))
+    {
+      await BackfillImagesAsync(db, ct);
+      return;
+    }
 
     var categories = new Dictionary<string, Category>
     {
@@ -33,6 +52,7 @@ public static class CatalogSeeder
         Brand = brand,
         Name = name,
         Price = price,
+        ImageUrl = SampleImages.GetValueOrDefault(sku),
         Category = categories[category],
         Description = $"{brand} {name}. " + string.Join(", ", pairs.Select(p => $"{p[0]}: {p[1]}")),
         Specs = pairs.Select(p => new ProductSpec { Name = p[0], Value = p[1] }).ToList(),
@@ -106,6 +126,20 @@ public static class CatalogSeeder
     Add("cooling", "COOL-NZXT-K240", "NZXT", "Kraken 240", 139.00m, 15, "type=AIO", "size=240mm", "sockets=AM5/LGA1700");
     Add("cooling", "COOL-DEEP-AG400", "DeepCool", "AG400", 29.00m, 61, "type=Air", "size=Single tower", "sockets=AM5/LGA1700");
 
+    await db.SaveChangesAsync(ct);
+  }
+
+  /// <summary>Gives sample products in an already-seeded database their photos. Never overwrites an existing ImageUrl.</summary>
+  private static async Task BackfillImagesAsync(StoreDbContext db, CancellationToken ct)
+  {
+    var skus = SampleImages.Keys.ToList();
+    var products = await db.Products.Where(p => skus.Contains(p.Sku) && p.ImageUrl == null).ToListAsync(ct);
+    if (products.Count == 0) return;
+
+    foreach (var product in products)
+    {
+      product.ImageUrl = SampleImages[product.Sku];
+    }
     await db.SaveChangesAsync(ct);
   }
 }

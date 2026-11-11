@@ -1,0 +1,79 @@
+[
+  {
+    "skus": [
+      "CPU-AMD-9950X"
+    ],
+    "file": "cpu-amd-9950x.jpg",
+    "title": "AMD Ryzen 9 9950X.jpg",
+    "author": "4300streetcar",
+    "license": "CC BY 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:AMD_Ryzen_9_9950X.jpg"
+  },
+  {
+    "skus": [
+      "SSD-CRU-MX500"
+    ],
+    "file": "ssd-cru-mx500.jpg",
+    "title": "CT1000MX500SSD1 rear 20210220.jpg",
+    "author": "Solomon203",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:CT1000MX500SSD1_rear_20210220.jpg"
+  },
+  {
+    "skus": [
+      "HDD-SEA-4T"
+    ],
+    "file": "hdd-sea-4t.jpg",
+    "title": "Seagate Barracuda 1500GB 02.jpg",
+    "author": "Hubert Berberich (HubiB)",
+    "license": "CC BY 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Seagate_Barracuda_1500GB_02.jpg"
+  },
+  {
+    "skus": [
+      "GPU-NV-5070"
+    ],
+    "file": "gpu-nv-5070.jpg",
+    "title": "20260521 아수스 RTX5070 그래픽카드.jpg",
+    "author": "Striker9498",
+    "license": "CC0",
+    "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "source": "https://commons.wikimedia.org/wiki/File:20260521_%EC%95%84%EC%88%98%EC%8A%A4_RTX5070_%EA%B7%B8%EB%9E%98%ED%94%BD%EC%B9%B4%EB%93%9C.jpg"
+  },
+  {
+    "skus": [
+      "GPU-NV-5060"
+    ],
+    "file": "gpu-nv-5060.jpg",
+    "title": "PNY RTX 5060 at Computex 2025.jpg",
+    "author": "4300streetcar",
+    "license": "CC BY 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:PNY_RTX_5060_at_Computex_2025.jpg"
+  },
+  {
+    "skus": [
+      "GPU-INT-B580"
+    ],
+    "file": "gpu-int-b580.jpg",
+    "title": "Intel Arc Battlemage B580 Limited Edition.jpg",
+    "author": "Jiahwang",
+    "license": "CC0",
+    "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "source": "https://commons.wikimedia.org/wiki/File:Intel_Arc_Battlemage_B580_Limited_Edition.jpg"
+  },
+  {
+    "skus": [
+      "RAM-COR-32-6000"
+    ],
+    "file": "ram-cor-32-6000.jpg",
+    "title": "2023 Pamięci Corsair Vengeance RGB.jpg",
+    "author": "Jacek Halicki",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:2023_Pami%C4%99ci_Corsair_Vengeance_RGB.jpg"
+  }
+]

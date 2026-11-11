@@ -16,6 +16,8 @@ public class Product
   public required string Brand { get; set; }
   public string Description { get; set; } = "";
   public decimal Price { get; set; }
+  /// <summary>Site-relative or absolute URL of the product photo. Null means no image; clients show a placeholder.</summary>
+  public string? ImageUrl { get; set; }
   public bool IsActive { get; set; } = true;
   public int CategoryId { get; set; }
   public Category Category { get; set; } = null!;

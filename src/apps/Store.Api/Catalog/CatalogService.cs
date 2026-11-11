@@ -60,7 +60,7 @@ public class CatalogService(StoreDbContext db, CatalogCache cache)
         .Where(p => p.Sku == sku && p.IsActive)
         .Select(p => new
         {
-          p.Sku, p.Name, p.Brand, p.Description, p.Price,
+          p.Sku, p.Name, p.Brand, p.Description, p.Price, p.ImageUrl,
           CategorySlug = p.Category.Slug, CategoryName = p.Category.Name,
           Specs = p.Specs.OrderBy(s => s.Name).Select(s => new { s.Name, s.Value }).ToList(),
         })
@@ -69,7 +69,7 @@ public class CatalogService(StoreDbContext db, CatalogCache cache)
       return p is null
         ? null
         : new ProductDetailDto(p.Sku, p.Name, p.Brand, p.Description, p.Price, p.CategorySlug, p.CategoryName,
-            p.Specs.ToDictionary(s => s.Name, s => s.Value));
+            p.Specs.ToDictionary(s => s.Name, s => s.Value), p.ImageUrl);
     }, ct);
 
   /// <summary>Stock levels change constantly, so this is intentionally never cached.</summary>
@@ -119,7 +119,7 @@ public class CatalogService(StoreDbContext db, CatalogCache cache)
     var items = await products
       .Skip((page - 1) * pageSize)
       .Take(pageSize)
-      .Select(p => new ProductSummaryDto(p.Sku, p.Name, p.Brand, p.Price, p.Category.Slug))
+      .Select(p => new ProductSummaryDto(p.Sku, p.Name, p.Brand, p.Price, p.Category.Slug, p.ImageUrl))
       .ToListAsync(ct);
 
     return new PagedResult<ProductSummaryDto>(items, page, pageSize, total);

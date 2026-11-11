@@ -1217,6 +1217,7 @@ export interface components {
             specs: {
                 [key: string]: string;
             };
+            imageUrl?: null | string;
         };
         ProductRequest: {
             name: string;
@@ -1236,6 +1237,7 @@ export interface components {
             /** Format: double */
             price: number;
             categorySlug: string;
+            imageUrl?: null | string;
         };
         QuoteDto: {
             /** Format: double */

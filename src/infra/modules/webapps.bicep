@@ -21,8 +21,8 @@ param webIdentity object
 param imageTag string
 
 // ---- wiring from the other modules ----
-param sqlServerFqdn string
-param sqlDatabaseName string
+@description('Name of the Key Vault secret holding the SQL connection string')
+param sqlSecretName string
 param serviceBusNamespace string
 param keyVaultUri string
 param redisSecretName string
@@ -83,8 +83,8 @@ resource api 'Microsoft.Web/sites@2024-04-01' = {
         { name: 'ASPNETCORE_ENVIRONMENT', value: 'Production' }
         // DefaultAzureCredential (Service Bus client, Key Vault data-protection key) picks this identity.
         { name: 'AZURE_CLIENT_ID', value: apiIdentity.clientId }
-        // Entra-only SQL: the app's own managed identity is the login (granted by infra/scripts/grant-sql-access.cs).
-        { name: 'ConnectionStrings__StoreDb', value: 'Server=tcp:${sqlServerFqdn},1433;Database=${sqlDatabaseName};Authentication=Active Directory Managed Identity;User Id=${apiIdentity.clientId};Encrypt=True;TrustServerCertificate=False;Connection Timeout=30' }
+        // SQL authentication: the connection string (with password) is a Key Vault secret, read via Key Vault reference.
+        { name: 'ConnectionStrings__StoreDb', value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/${sqlSecretName}/)' }
         { name: 'ConnectionStrings__Redis', value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/${redisSecretName}/)' }
         { name: 'ServiceBus__FullyQualifiedNamespace', value: '${serviceBusNamespace}.servicebus.windows.net' }
         { name: 'DataProtection__KeyVaultKeyUri', value: dataProtectionKeyUri }

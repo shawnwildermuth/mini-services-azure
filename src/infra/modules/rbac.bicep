@@ -3,7 +3,7 @@
 //   web identity ... pull images from the registry
 //   api identity ... pull images, read the Redis secret, wrap/unwrap the data-protection key, send + receive Service Bus messages
 //   func identity .. pull nothing; send + receive Service Bus messages, use its storage account
-// SQL access is granted separately, inside the database (infra/scripts/grant-sql-access.cs).
+// SQL uses SQL authentication; its connection string is a Key Vault secret that the api and func identities may read.
 
 param registryName string
 param keyVaultName string
@@ -64,6 +64,17 @@ resource apiCryptoUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   properties: {
     roleDefinitionId: roleId(roles.keyVaultCryptoUser)
     principalId: apiPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// ---- Functions: Key Vault (SQL connection string) ----
+resource functionSecretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(vault.id, functionPrincipalId, roles.keyVaultSecretsUser)
+  scope: vault
+  properties: {
+    roleDefinitionId: roleId(roles.keyVaultSecretsUser)
+    principalId: functionPrincipalId
     principalType: 'ServicePrincipal'
   }
 }

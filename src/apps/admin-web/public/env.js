@@ -8,8 +8,8 @@ window.__APP_CONFIG__ = {
   apiBaseUrl: 'http://localhost:5233',
   auth: {
     mode: 'dev',
-    tenantId: '',
-    clientId: '', // the admin SPA's application (client) id
-    apiScope: '', // e.g. api://<api-client-id>/access_as_admin
+    tenantId: 'c260f41f-683e-425d-b5f5-256314c31dac',
+    clientId: 'dd14b197-b7fe-4060-af11-bd73b6e63427', // the admin SPA's application (client) id
+    apiScope: 'api://dd14b197-b7fe-4060-af11-bd73b6e63427/access_as_admin', // e.g. api://<api-client-id>/access_as_admin
   },
 }

@@ -17,13 +17,12 @@ param location string = resourceGroup().location
 @description('Tag of the container images to run. The pipeline passes the commit SHA; "latest" suits a manual first deployment.')
 param imageTag string = 'latest'
 
-// ---- Azure SQL administrator (also the identity that applies migrations) ----
-@description('Object id of the Entra user, group or application that administers SQL (the CI/CD service principal, or a group containing it)')
-param sqlAdminObjectId string
-@description('Display name of that administrator')
+// ---- Azure SQL administrator (SQL authentication; also the login that applies migrations) ----
+@description('SQL administrator login name')
 param sqlAdminLogin string
-@allowed([ 'User', 'Group', 'Application' ])
-param sqlAdminType string = 'Group'
+@secure()
+@description('SQL administrator password. Pass it on the command line or from a pipeline secret; never commit it.')
+param sqlAdminPassword string
 
 // ---- admin site sign-in ----
 @description('Application (client) id of the Entra app registration for the admin site (see docs/entra-setup.md)')
@@ -42,7 +41,9 @@ param sqlSkuTier string = 'Standard'
 @description('Azure Managed Redis SKU')
 param redisSku string = 'Balanced_B0'
 @description('Purge protection is irreversible once on; set false only for throwaway environments')
-param keyVaultPurgeProtection bool = true
+param keyVaultPurgeProtection bool = false
+@description('Change this (e.g. "2") to get a new Key Vault name when the old one is still soft-deleted after a teardown')
+param keyVaultNameSalt string = 'abadaba'
 
 param tags object = {
   app: 'partsstore'
@@ -55,7 +56,9 @@ var shortSuffix = take(suffix, 6)
 
 var names = {
   registry: 'acr${replace(baseName, '-', '')}${shortSuffix}'
-  keyVault: 'kv-${environmentName}-${take(suffix, 10)}'
+  // Max 24 chars: 'kv-' + project/environment (trimmed to 18 in all) + '-' + 5-char suffix. The salt lets you pick a fresh
+  // name after a teardown, because a deleted vault keeps its name reserved while soft-deleted (and forever if purge-protected).
+  keyVault: '${take('kv-${baseName}', 18)}-${take(uniqueString(resourceGroup().id, keyVaultNameSalt), 5)}'
   sqlServer: 'sql-${baseName}-${shortSuffix}'
   sqlDatabase: 'partsstore'
   serviceBus: 'sb-${baseName}-${shortSuffix}'
@@ -101,9 +104,9 @@ module sql 'modules/sql.bicep' = {
     databaseName: names.sqlDatabase
     location: location
     tags: tags
-    adminObjectId: sqlAdminObjectId
     adminLogin: sqlAdminLogin
-    adminType: sqlAdminType
+    adminPassword: sqlAdminPassword
+    keyVaultName: keyVault.outputs.name
     skuName: sqlSkuName
     skuTier: sqlSkuTier
     logAnalyticsWorkspaceId: monitoring.outputs.workspaceId
@@ -151,8 +154,7 @@ module webApps 'modules/webapps.bicep' = {
     apiIdentity: identities.outputs.api
     webIdentity: identities.outputs.web
     imageTag: imageTag
-    sqlServerFqdn: sql.outputs.fullyQualifiedDomainName
-    sqlDatabaseName: sql.outputs.databaseName
+    sqlSecretName: sql.outputs.connectionStringSecretName
     serviceBusNamespace: serviceBus.outputs.name
     keyVaultUri: keyVault.outputs.uri
     redisSecretName: redis.outputs.connectionStringSecretName
@@ -174,8 +176,8 @@ module functions 'modules/functionapp.bicep' = {
     storageAccountName: storage.outputs.name
     deploymentContainerUrl: storage.outputs.deploymentContainerUrl
     identity: identities.outputs.functions
-    sqlServerFqdn: sql.outputs.fullyQualifiedDomainName
-    sqlDatabaseName: sql.outputs.databaseName
+    keyVaultUri: keyVault.outputs.uri
+    sqlSecretName: sql.outputs.connectionStringSecretName
     serviceBusNamespace: serviceBus.outputs.name
     appInsightsConnectionString: monitoring.outputs.connectionString
   }
@@ -194,8 +196,3 @@ output apiUrl string = webApps.outputs.apiUrl
 output storeUrl string = webApps.outputs.storeUrl
 output adminUrl string = webApps.outputs.adminUrl
 output keyVaultName string = keyVault.outputs.name
-// Database users to create (scripts/grant-sql-access.cs): the SQL user name is the identity name, the SID its client id.
-output sqlIdentities array = [
-  { name: identities.outputs.api.name, clientId: identities.outputs.api.clientId }
-  { name: identities.outputs.functions.name, clientId: identities.outputs.functions.clientId }
-]

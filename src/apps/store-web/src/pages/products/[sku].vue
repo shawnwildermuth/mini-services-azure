@@ -4,10 +4,10 @@ import { useRoute } from 'vue-router'
 import { api, type Schemas } from '@/api/client'
 import AddToCartButton from '@/components/AddToCartButton.vue'
 import ErrorAlert from '@/components/ErrorAlert.vue'
+import ProductImage from '@/components/ProductImage.vue'
 import StatusPill from '@/components/StatusPill.vue'
 import { usePageTitle } from '@/composables/usePageTitle'
 import { MAX_CART_QUANTITY } from '@/config'
-import { categoryIcon } from '@/utils/categories'
 import { money, specLabel } from '@/utils/format'
 
 const route = useRoute('/products/[sku]')
@@ -81,8 +81,13 @@ const productRef = computed(() =>
     </nav>
 
     <div class="grid gap-8 md:grid-cols-2">
-      <div class="flex h-80 items-center justify-center rounded-box bg-base-200 text-9xl" aria-hidden="true">
-        {{ categoryIcon(product.categorySlug) }}
+      <div class="h-80 overflow-hidden rounded-box">
+        <ProductImage
+          :src="product.imageUrl"
+          :alt="product.name"
+          :category-slug="product.categorySlug"
+          icon-class="text-9xl"
+        />
       </div>
 
       <div class="space-y-4">

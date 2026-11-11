@@ -4,11 +4,11 @@ namespace Store.Api.Catalog;
 
 public record CategoryDto(string Slug, string Name, int ProductCount);
 
-public record ProductSummaryDto(string Sku, string Name, string Brand, decimal Price, string CategorySlug);
+public record ProductSummaryDto(string Sku, string Name, string Brand, decimal Price, string CategorySlug, string? ImageUrl);
 
 public record ProductDetailDto(
   string Sku, string Name, string Brand, string Description, decimal Price,
-  string CategorySlug, string CategoryName, IReadOnlyDictionary<string, string> Specs);
+  string CategorySlug, string CategoryName, IReadOnlyDictionary<string, string> Specs, string? ImageUrl);
 
 /// <summary>Filter options for the product list: brands, spec values by spec name, and the price range.</summary>
 public record FacetsDto(

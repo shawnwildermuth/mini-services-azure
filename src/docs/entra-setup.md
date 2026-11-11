@@ -18,8 +18,8 @@ Entra admin center → **Identity → Applications → App registrations → New
 
 After creating it, copy from the **Overview** page:
 
-- **Application (client) ID** → `<client-id>`
-- **Directory (tenant) ID** → `<tenant-id>`
+- **Application (client) ID** → `dd14b197-b7fe-4060-af11-bd73b6e63427`
+- **Directory (tenant) ID** → `c260f41f-683e-425d-b5f5-256314c31dac`
 
 When you deploy, add the production admin site URL as a second SPA redirect URI (**Authentication → Add URI**).
 Redirect URIs must match exactly, including scheme and port, with no trailing slash.

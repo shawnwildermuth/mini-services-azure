@@ -10,8 +10,9 @@ param deploymentContainerUrl string
 @description('The function app\'s user-assigned managed identity')
 param identity object
 
-param sqlServerFqdn string
-param sqlDatabaseName string
+param keyVaultUri string
+@description('Name of the Key Vault secret holding the SQL connection string')
+param sqlSecretName string
 param serviceBusNamespace string
 param appInsightsConnectionString string
 
@@ -40,6 +41,7 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
   properties: {
     serverFarmId: plan.id
     httpsOnly: true
+    keyVaultReferenceIdentity: identity.id
     functionAppConfig: {
       deployment: {
         storage: {
@@ -76,7 +78,7 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
         { name: 'ServiceBus__clientId', value: identity.clientId }
         // ...and our own code (publishing payment-captured) uses DefaultAzureCredential, which honours this.
         { name: 'AZURE_CLIENT_ID', value: identity.clientId }
-        { name: 'ConnectionStrings__StoreDb', value: 'Server=tcp:${sqlServerFqdn},1433;Database=${sqlDatabaseName};Authentication=Active Directory Managed Identity;User Id=${identity.clientId};Encrypt=True;TrustServerCertificate=False;Connection Timeout=30' }
+        { name: 'ConnectionStrings__StoreDb', value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/${sqlSecretName}/)' }
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsightsConnectionString }
       ]
     }

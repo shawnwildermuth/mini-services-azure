@@ -308,6 +308,10 @@ namespace Store.Data.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 

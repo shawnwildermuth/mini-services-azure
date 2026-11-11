@@ -3171,7 +3171,8 @@
           "price",
           "categorySlug",
           "categoryName",
-          "specs"
+          "specs",
+          "imageUrl"
         ],
         "type": "object",
         "properties": {
@@ -3202,6 +3203,12 @@
             "additionalProperties": {
               "type": "string"
             }
+          },
+          "imageUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -3257,7 +3264,8 @@
           "name",
           "brand",
           "price",
-          "categorySlug"
+          "categorySlug",
+          "imageUrl"
         ],
         "type": "object",
         "properties": {
@@ -3276,6 +3284,12 @@
           },
           "categorySlug": {
             "type": "string"
+          },
+          "imageUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },

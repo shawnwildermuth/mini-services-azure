@@ -3,7 +3,7 @@ param name string
 param location string
 param tags object
 @description('Purge protection is irreversible once on; turn it off only for throwaway environments')
-param enablePurgeProtection bool = true
+param enablePurgeProtection bool = false
 
 // Access is by Azure RBAC (assigned in rbac.bicep), not legacy access policies.
 resource vault 'Microsoft.KeyVault/vaults@2023-07-01' = {

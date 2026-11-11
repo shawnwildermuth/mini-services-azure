@@ -9,7 +9,7 @@ resource workspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   tags: tags
   properties: {
     sku: { name: 'PerGB2018' }
-    retentionInDays: 90
+    retentionInDays: 30
   }
 }
 

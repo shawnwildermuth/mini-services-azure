@@ -1,4 +1,4 @@
-<Project Sdk="Aspire.AppHost.Sdk/13.6.3">
+<Project Sdk="Aspire.AppHost.Sdk/13.6.5">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -10,14 +10,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.Azure.Functions" Version="13.6.3" />
-    <PackageReference Include="Aspire.Hosting.Azure.ServiceBus" Version="13.6.3" />
-    <PackageReference Include="Aspire.Hosting.Azure.Storage" Version="13.6.3" />
-    <PackageReference Include="Aspire.Hosting.JavaScript" Version="13.6.3" />
-    <PackageReference Include="Aspire.Hosting.Redis" Version="13.6.3" />
-    <PackageReference Include="Aspire.Hosting.SqlServer" Version="13.6.3" />
-    <!-- Aspire 13.6.3 pulls in a Pkcs version with known advisories; the CI vulnerability gate fails on those. -->
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+    <PackageReference Include="Aspire.Hosting" Version="13.6.5" />
+    <PackageReference Include="Aspire.Hosting.Azure.Functions" Version="13.6.5" />
+    <PackageReference Include="Aspire.Hosting.Azure.ServiceBus" Version="13.6.5" />
+    <PackageReference Include="Aspire.Hosting.Azure.Storage" Version="13.6.5" />
+    <PackageReference Include="Aspire.Hosting.JavaScript" Version="13.6.5" />
+    <PackageReference Include="Aspire.Hosting.Redis" Version="13.6.5" />
+    <PackageReference Include="Aspire.Hosting.SqlServer" Version="13.6.5" />
+    <!-- Aspire 13.6.x pulls in a Pkcs version with known advisories; the CI vulnerability gate fails on those. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
   </ItemGroup>
 
   <ItemGroup>

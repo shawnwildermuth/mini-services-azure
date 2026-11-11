@@ -4,12 +4,13 @@ param databaseName string
 param location string
 param tags object
 
-@description('Object id of the Entra user, group or application that administers the server (also runs migrations)')
-param adminObjectId string
-@description('Display name / login of that administrator')
+@description('SQL administrator login (also runs migrations and is what the apps connect as)')
 param adminLogin string
-@allowed([ 'User', 'Group', 'Application' ])
-param adminType string = 'Group'
+@secure()
+@description('Password for the SQL administrator login')
+param adminPassword string
+@description('Key Vault that receives the connection string as a secret')
+param keyVaultName string
 
 @description('Log Analytics workspace that receives the audit log')
 param logAnalyticsWorkspaceId string
@@ -19,7 +20,7 @@ param enableThreatDetection bool = true
 param skuName string = 'S0'
 param skuTier string = 'Standard'
 
-// Microsoft Entra authentication only: there is no SQL password anywhere. Apps connect with their managed identities.
+// SQL authentication: a single administrator login/password. The apps read the connection string from Key Vault.
 resource server 'Microsoft.Sql/servers@2023-08-01' = {
   name: serverName
   location: location
@@ -28,19 +29,13 @@ resource server 'Microsoft.Sql/servers@2023-08-01' = {
     version: '12.0'
     minimalTlsVersion: '1.2'
     publicNetworkAccess: 'Enabled'
-    administrators: {
-      administratorType: 'ActiveDirectory'
-      principalType: adminType
-      login: adminLogin
-      sid: adminObjectId
-      tenantId: tenant().tenantId
-      azureADOnlyAuthentication: true
-    }
+    administratorLogin: adminLogin
+    administratorLoginPassword: adminPassword
   }
 }
 
 // Lets Azure-hosted services (App Service, Functions) reach the server. A private endpoint is the stronger option
-// for later; the firewall plus Entra-only authentication is the baseline.
+// for later; the firewall plus a strong password is the baseline.
 resource allowAzureServices 'Microsoft.Sql/servers/firewallRules@2023-08-01' = {
   parent: server
   name: 'AllowAzureServices'
@@ -110,6 +105,21 @@ resource threatDetection 'Microsoft.Sql/servers/securityAlertPolicies@2023-08-01
   }
 }
 
+resource vault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
+  name: keyVaultName
+}
+
+// The apps read this through a Key Vault reference, so the password never appears in app settings or deployment outputs.
+resource connectionStringSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: vault
+  name: 'sql-connection-string'
+  properties: {
+    value: 'Server=tcp:${server.properties.fullyQualifiedDomainName},1433;Database=${database.name};User ID=${adminLogin};Password=${adminPassword};Encrypt=True;TrustServerCertificate=False;Connection Timeout=30'
+    contentType: 'SQL Server connection string'
+  }
+}
+
+output connectionStringSecretName string = connectionStringSecret.name
 output serverName string = server.name
 output fullyQualifiedDomainName string = server.properties.fullyQualifiedDomainName
 output databaseName string = database.name
